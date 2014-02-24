@@ -1,30 +1,31 @@
 //
 //      OF Teensy/OCTO class by Jason Walters @ BBDO ...
-//      Original P5 code by Paul Stoffregen/PJRC.COM
+//      Original Processing/JS code by Paul Stoffregen/PJRC.COM
 //
-//      Last revision by Jason Walters on September 25th, 2013
-//      Compatible with openFrameworks 0.80
+//      Last revision by Jason Walters on February 24th, 2014
+//      Made with openFrameworks 0.80
 //
-///////////////////////////////////////////////////////////////
+//--------------------------------------------------------------
 
 #include "ofxTeensyOcto.h"
 
 //--------------------------------------------------------------
-void ofxTeensyOcto::setup(int _ledWidth, int _ledHeight)
+void ofxTeensyOcto::setup(int _ledWidth, int _ledHeight, int _stripsPerPort, int _numPorts)
 {    
     // LED variables
-    ledWidth = _ledWidth;        // LED max width
-    ledHeight = _ledHeight;      // LED max height
-    numPorts = 0;                // default teensy ports
-    maxPorts = 24;               // max teensy ports
-    counterShape = 0;
+    ledWidth = _ledWidth;                       // LED max width
+    ledHeight = _ledHeight;                     // LED max height
+    stripsPerPort = _stripsPerPort;
+    numPortsMain = _numPorts;
+    numPorts = 0;                               // default teensy ports (keep at zero)
+    maxPorts = 24;                              // max teensy ports
     
     // LED arrays
     ledSerial = new ofSerial[maxPorts];
     ledArea = new ofRectangle[maxPorts];
     ledLayout = new bool[maxPorts];
     ledImage = new ofImage[maxPorts];
-    colors = new ofColor[ledWidth*ledHeight];
+    colors = new ofColor[ledWidth * (ledHeight * stripsPerPort * numPortsMain)];
     
     // let's list our serial devices
     ledSerial[numPorts].listDevices();
@@ -33,7 +34,7 @@ void ofxTeensyOcto::setup(int _ledWidth, int _ledHeight)
 }
 
 //--------------------------------------------------------------
-void ofxTeensyOcto::serialConfigure(string portName, int _ledWidth, int _ledHeight, int _xoffset, int _yoffset, int _portWidth, int _portHeight, int _direction)
+void ofxTeensyOcto::serialConfigure(string portName, int _xoffset, int _yoffset, int _widthPct, int _heightPct, int _direction)
 {
     int baud = 9600;
     ledSerial[numPorts].setup(portName, baud);
@@ -41,22 +42,22 @@ void ofxTeensyOcto::serialConfigure(string portName, int _ledWidth, int _ledHeig
     ofSleepMillis(50);
     
     // only store the info and increase numPorts if Teensy responds properly
-    ledImage[numPorts].allocate(_ledWidth, _ledHeight, OF_IMAGE_COLOR);
-    ledArea[numPorts].set(_xoffset, _yoffset, _portWidth, _portHeight);
-    ledLayout[numPorts] = _direction == 0; // affects layout > pixel direction
-    numPorts++;
+    ledImage[numPorts].allocate(ledWidth, ledHeight * stripsPerPort, OF_IMAGE_COLOR);
+    ledArea[numPorts].set(_xoffset, _yoffset, _widthPct, _heightPct);
+    ledLayout[numPorts] = _xoffset == 0; // affects layout > pixel direction
+    numPorts++;    
 }
 
 // image2data converts an image to OctoWS2811's raw data format.
 // The number of vertical pixels in the image must be a multiple
 // of 8.  The data array must be the proper size for the image.
 //--------------------------------------------------------------
-void ofxTeensyOcto::image2data(ofImage image, unsigned char * data, bool layout)
+void ofxTeensyOcto::image2data(ofImage image, unsigned char* data, bool layout)
 {    
     int offset = 3;
     int x, y, xbegin, xend, xinc, mask;
-    int linesPerPin = image.getHeight() / 8;
-    int * pixel = new int[8];
+    int linesPerPin = image.height / 8;
+    int* pixel = new int[8];
     
     // get the copied image pixels
     pixels2 = image.getPixelsRef();
@@ -64,7 +65,7 @@ void ofxTeensyOcto::image2data(ofImage image, unsigned char * data, bool layout)
     // 2d array of our pixel colors
     for (int x = 0; x < ledWidth; x++)
     {
-        for (int y = 0; y < ledHeight; y++)
+        for (int y = 0; y < (ledHeight * stripsPerPort * numPortsMain); y++)
         {
             int loc = x + y * ledWidth;
             colors[loc] = pixels2.getColor(x, y);
@@ -77,23 +78,23 @@ void ofxTeensyOcto::image2data(ofImage image, unsigned char * data, bool layout)
         {
             // even numbered rows are left to right
             xbegin = 0;
-            xend = image.getWidth();
+            xend = image.width;
             xinc = 1;
         }
         else
         {
             // odd numbered rows are right to left
-            xbegin = image.getWidth() - 1;
+            xbegin = image.width - 1;
             xend = -1;
             xinc = -1;
         }
         
-        //for (x = 0; x < ledWidth; x++)
+        //for (x = 0; x < ledWidth; x++) // WTF is this?!?
         for (x = xbegin; x != xend; x += xinc)
         {
             for (int i=0; i < 8; i++)
             {
-                int temploc = x + (i * ledWidth);
+                int temploc = x + (y + linesPerPin * i) * image.width;
                 pixel[i] = colors[temploc].getHex();
                 pixel[i] = colorWiring(pixel[i]);
             }
@@ -125,9 +126,9 @@ void ofxTeensyOcto::serialWrite()
     {
         // copy a portion of the movie's image to the LED image
         int xoffset = percentage(ledWidth, ledArea[i].x);
-        int yoffset = percentage(ledHeight, ledArea[i].y);
+        int yoffset = percentage((ledHeight * stripsPerPort * numPortsMain), ledArea[i].y);
         int xwidth =  percentage(ledWidth, ledArea[i].getWidth());
-        int yheight = percentage(ledHeight, ledArea[i].getHeight());
+        int yheight = percentage((ledHeight * stripsPerPort * numPortsMain), ledArea[i].getHeight());
         
         // grabs the screen so we can convert to pixels
         ledImage[i].setFromPixels(pixels1);
@@ -140,90 +141,12 @@ void ofxTeensyOcto::serialWrite()
         
         ledData[0] = '*';  // first Teensy is the frame sync master
         
-        int dataSize = ((ledWidth*8) * 3) + 3;  // height for each port is 8
+        int dataSize = ((ledWidth*(ledHeight*stripsPerPort)) * 3) + 3;  // height for each port is 8
         // send the raw data to the LEDs  :-)
         for (int j = 0; j < dataSize; j++)
         {
             ledSerial[i].writeByte(ledData[j]);
         }
         ledSerial[i].drain();   // this prevents massive flickering!
-    }
-}
-
-//--------------------------------------------------------------
-// DEMO DRAW FUNCTIONS BELOW !!! //
-//--------------------------------------------------------------
-
-// debugger
-//--------------------------------------------------------------
-void ofxTeensyOcto::drawDebug(int _brightness, int _debugScroll)
-{    
-    // white debug... 
-    for (int i = 0; i < ledHeight; i++)
-    {
-        ofSetColor(ofColor::fromHsb(i*10, 0, _brightness));
-        ofRect(0, i, ledWidth, 1);
-    }
-    
-    // black line (LEDs OFF) -- use "," or "." to traverse the rows...
-    ofSetColor(ofColor::fromHsb(0, 0, 0));
-    ofRect(0, _debugScroll, ledWidth, 1);
-    
-}
-
-// rainbow - horizontal
-//--------------------------------------------------------------
-void ofxTeensyOcto::drawRainbowH(int _brightness)
-{    
-    // vertical strips of rainbow goodness
-    for (int i = 0; i < ledWidth; i++)
-    {
-        int huemap = ofMap(i, 0, ledWidth-1, 0, 255);
-        ofSetColor(ofColor::fromHsb(huemap, 255, _brightness));
-        ofRect(i, 0, 1, ledHeight);
-    }
-}
-
-// rainbow - vertical
-//--------------------------------------------------------------
-void ofxTeensyOcto::drawRainbowV(int _brightness)
-{    
-    // horizontal strips of rainbow goodness
-    for (int i = 0; i < ledHeight; i++)
-    {
-        int huemap = ofMap(i, 0, ledHeight-1, 0, 255);
-        ofSetColor(ofColor::fromHsb(huemap, 255, _brightness));
-        ofRect(0, i, ledWidth, 1);
-    }
-}
-
-// wave animation
-//--------------------------------------------------------------
-void ofxTeensyOcto::drawWaves(int _brightness, float _waveSpeed)
-{
-    
-    // sin wave
-    counterShape = counterShape + _waveSpeed;
-    
-    // color scroller
-    hue++;
-    if (hue > 255) hue = 0;
-    
-    // back layer
-    float k = 0.0;
-    for(int i = 0; i < ledWidth; i+=5)
-    {
-        ofSetColor(ofColor::fromHsb(hue, 255, _brightness));
-        ofRect(i, ledHeight, 5, -ledHeight/4 * (sin(counterShape-k)+1.0) - ledHeight/4);
-        k+=0.5;
-    }
-    
-    // front layer
-    float kk = 0.0;
-    for(int i = 0; i < ledWidth; i+=5)
-    {
-        ofSetColor(ofColor::fromHsb(hue, 255, _brightness*0.25));
-        ofRect(i, ledHeight+2, 5, -ledHeight/4 * (sin(counterShape-kk)+1.0) - ledHeight/4);
-        kk+=0.5;
     }
 }
