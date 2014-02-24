@@ -7,17 +7,11 @@ class ofxTeensyOcto
 public:
     
     // teensy functions
-    void setup(int _ledWidth, int _ledHeight);
+    void setup(int _ledWidth, int _ledHeight, int _stripsPerPort, int _numPorts);
     void update();
     void serialWrite();
-    void serialConfigure(string portName, int _ledWidth, int _ledHeight, int _xoffset, int _yoffset, int _portWidth, int _portHeight, int _direction);
+    void serialConfigure(string portName, int _xoffset, int _yoffset, int _widthPct, int _heightPct, int _direction);
     void image2data(ofImage image, unsigned char * data, bool layout);
-    
-    // demo graphic functions
-    void drawDebug(int _brightness, int _debugScroll);
-    void drawRainbowH(int _brightness);
-    void drawRainbowV(int _brightness);
-    void drawWaves(int _brightness, float _waveSpeed);
     
     // variables
     ofSerial * ledSerial;
@@ -29,18 +23,17 @@ public:
     ofPixels pixels2;
     int ledWidth;
     int ledHeight;
+    int stripsPerPort;
+    int numPortsMain;
     int numPorts;
     int maxPorts;
-    
-    // graphics variables
-    float counterShape;
-    int hue;
         
     // translate the 24 bit color from RGB to the actual
     // order used by the LED wiring.  GRB is the most common.
     int colorWiring(int c)
     {
-        return ((c & 0xFF0000) >> 8) | ((c & 0x00FF00) << 8) | (c & 0x0000FF); // GRB - most common wiring
+        // GRB wiring
+        return ((c & 0xFF0000) >> 8) | ((c & 0x00FF00) << 8) | (c & 0x0000FF);
     }
     
     // convert an integer from 0 to 100 to a float percentage
