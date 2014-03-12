@@ -218,18 +218,9 @@ void ofApp::draw()
 //--------------------------------------------------------------
 void ofApp::drawPanels()
 {
-    // large display, duplicating to get a sense of two panels...
+    // large display
     ofPushMatrix();
     ofTranslate(319, 520, 0);
-    ofScale(5, 5);
-    ofRotate(90);
-    ofRotateZ(180);
-    ofRotateX(180);
-    drawFbo();
-    ofPopMatrix();
-    
-    ofPushMatrix();
-    ofTranslate(638, 520, 0);
     ofScale(5, 5);
     ofRotate(90);
     ofRotateZ(180);
