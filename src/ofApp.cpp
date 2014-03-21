@@ -3,7 +3,7 @@
 //      by Jason Walters @ BBDO ...
 //      Original Processing/JS code by Paul Stoffregen/PJRC.COM
 //
-//      Last revision by Jason Walters on February 24th, 2014
+//      Last revision by Jason Walters on March 21st, 2014
 //      Made with openFrameworks 0.80
 //
 //--------------------------------------------------------------
