@@ -10,15 +10,19 @@ public:
     void setup(int _ledWidth, int _ledHeight, int _stripsPerPort, int _numPorts);
     void update();
     void serialWrite();
-    void serialConfigure(string portName, int _xoffset, int _yoffset, int _widthPct, int _heightPct, int _direction);
-    void image2data(ofImage image, unsigned char * data, bool layout);
+    void serialConfigure(string portName, float _xoffset, float _yoffset, float _widthPct, float _heightPct, int _direction);
+    void image2data(ofImage image, unsigned char* data, bool layout);
+    void draw(int _x, int _y);
     
-    // variables
+    // arrays
     ofSerial * ledSerial;
     ofRectangle * ledArea;
     bool * ledLayout;
     ofImage * ledImage;
     ofColor * colors;
+    unsigned char *ledData;
+    
+    // variables
     ofPixels pixels1;
     ofPixels pixels2;
     int ledWidth;
@@ -27,7 +31,8 @@ public:
     int numPortsMain;
     int numPorts;
     int maxPorts;
-        
+    int dataSize;
+    
     // translate the 24 bit color from RGB to the actual
     // order used by the LED wiring.  GRB is the most common.
     int colorWiring(int c)
@@ -39,7 +44,7 @@ public:
     // convert an integer from 0 to 100 to a float percentage
     // from 0.0 to 1.0.  Special cases for 1/3, 1/6, 1/7, etc
     // are handled automatically to fix integer rounding.
-    double percentageFloat(int percent)
+    double percentageFloat(float percent)
     {
         if (percent == 33) return 1.0 / 3.0;
         if (percent == 17) return 1.0 / 6.0;
@@ -52,11 +57,11 @@ public:
     }
     
     // scale a number by a percentage, from 0 to 100
-    int percentage(int num, int percent)
+    float percentage(float num, float percent)
     {
         double mult = percentageFloat(percent);
         double output = num * mult;
-        return (int)output;
+        return (float)output;
     }
     
     // scale a number by the inverse of a percentage, from 0 to 100
