@@ -2,7 +2,7 @@
 //      OF Teensy/OCTO class by Jason Walters @ BBDO ...
 //      Original Processing/JS code by Paul Stoffregen/PJRC.COM
 //
-//      Last revision by Jason Walters on February 24th, 2014
+//      Last revision by Jason Walters on March 21st, 2014
 //      Made with openFrameworks 0.80
 //
 //--------------------------------------------------------------
@@ -11,14 +11,16 @@
 
 //--------------------------------------------------------------
 void ofxTeensyOcto::setup(int _ledWidth, int _ledHeight, int _stripsPerPort, int _numPorts)
-{    
+{
     // LED variables
     ledWidth = _ledWidth;                       // LED max width
     ledHeight = _ledHeight;                     // LED max height
-    stripsPerPort = _stripsPerPort;
-    numPortsMain = _numPorts;
-    numPorts = 0;                               // default teensy ports (keep at zero)
-    maxPorts = 24;                              // max teensy ports
+    stripsPerPort = _stripsPerPort;             // LED strips per teensy
+    numPortsMain = _numPorts;                   // number of teensy ports
+    numPorts = 0;                               // teensy ports counter
+    maxPorts = 8;                               // max teensy ports
+    
+    dataSize = ((ledWidth * (ledHeight * stripsPerPort)) * 3) + 3;
     
     // LED arrays
     ledSerial = new ofSerial[maxPorts];
@@ -26,17 +28,20 @@ void ofxTeensyOcto::setup(int _ledWidth, int _ledHeight, int _stripsPerPort, int
     ledLayout = new bool[maxPorts];
     ledImage = new ofImage[maxPorts];
     colors = new ofColor[ledWidth * (ledHeight * stripsPerPort * numPortsMain)];
+    pixels1.allocate(ledWidth, ledHeight*stripsPerPort*numPortsMain, OF_PIXELS_RGB);
+    pixels2.allocate(ledWidth, ledHeight*stripsPerPort*numPortsMain, OF_PIXELS_RGB);
+    ledData = new unsigned char[((ledWidth * (ledHeight * stripsPerPort)) * 3) + 3];
     
     // let's list our serial devices
     ledSerial[numPorts].listDevices();
     vector <ofSerialDeviceInfo> deviceList = ledSerial[numPorts].getDeviceList();
-    ofSleepMillis(20);
+    ofSleepMillis(20);    
 }
 
 //--------------------------------------------------------------
-void ofxTeensyOcto::serialConfigure(string portName, int _xoffset, int _yoffset, int _widthPct, int _heightPct, int _direction)
+void ofxTeensyOcto::serialConfigure(string portName, float _xoffset, float _yoffset, float _widthPct, float _heightPct, int _direction)
 {
-    int baud = 9600;
+    int baud = 115200;
     ledSerial[numPorts].setup(portName, baud);
     ledSerial[numPorts].writeByte('?');         // send an initial character
     ofSleepMillis(50);
@@ -44,8 +49,8 @@ void ofxTeensyOcto::serialConfigure(string portName, int _xoffset, int _yoffset,
     // only store the info and increase numPorts if Teensy responds properly
     ledImage[numPorts].allocate(ledWidth, ledHeight * stripsPerPort, OF_IMAGE_COLOR);
     ledArea[numPorts].set(_xoffset, _yoffset, _widthPct, _heightPct);
-    ledLayout[numPorts] = _xoffset == 0; // affects layout > pixel direction
-    numPorts++;    
+    ledLayout[numPorts] = _direction == 0; // affects layout > pixel direction
+    numPorts++;
 }
 
 // image2data converts an image to OctoWS2811's raw data format.
@@ -61,7 +66,7 @@ void ofxTeensyOcto::image2data(ofImage image, unsigned char* data, bool layout)
     
     // get the copied image pixels
     pixels2 = image.getPixelsRef();
-    
+
     // 2d array of our pixel colors
     for (int x = 0; x < ledWidth; x++)
     {
@@ -89,7 +94,6 @@ void ofxTeensyOcto::image2data(ofImage image, unsigned char* data, bool layout)
             xinc = -1;
         }
         
-        //for (x = 0; x < ledWidth; x++) // WTF is this?!?
         for (x = xbegin; x != xend; x += xinc)
         {
             for (int i=0; i < 8; i++)
@@ -121,32 +125,26 @@ void ofxTeensyOcto::update()
 
 //--------------------------------------------------------------
 void ofxTeensyOcto::serialWrite()
-{    
+{
     for (int i=0; i < numPorts; i++)
     {
         // copy a portion of the movie's image to the LED image
-        int xoffset = percentage(ledWidth, ledArea[i].x);
-        int yoffset = percentage((ledHeight * stripsPerPort * numPortsMain), ledArea[i].y);
-        int xwidth =  percentage(ledWidth, ledArea[i].getWidth());
-        int yheight = percentage((ledHeight * stripsPerPort * numPortsMain), ledArea[i].getHeight());
+        float xoffset = percentage(ledWidth, ledArea[i].x);
+        float yoffset = percentage((ledHeight * stripsPerPort * numPortsMain), ledArea[i].y);
+        float xwidth =  percentage(ledWidth, ledArea[i].getWidth());
+        float yheight = percentage((ledHeight * stripsPerPort * numPortsMain), ledArea[i].getHeight());
         
         // grabs the screen so we can convert to pixels
         ledImage[i].setFromPixels(pixels1);
         ledImage[i].crop(xoffset, yoffset, xwidth, yheight);
         
-        // convert the LED image to raw data
-        unsigned char *ledData = new unsigned char[((int)ledImage[i].getWidth() * (int)ledImage[i].getHeight() * 3) + 3];
-        
         image2data(ledImage[i], ledData, ledLayout[i]);
         
         ledData[0] = '*';  // first Teensy is the frame sync master
         
-        int dataSize = ((ledWidth*(ledHeight*stripsPerPort)) * 3) + 3;  // height for each port is 8
-        // send the raw data to the LEDs  :-)
-        for (int j = 0; j < dataSize; j++)
-        {
-            ledSerial[i].writeByte(ledData[j]);
+        int nBytesWritten = 0;
+        while (nBytesWritten < dataSize){
+            nBytesWritten += ledSerial[i].writeBytes( &ledData[nBytesWritten], dataSize );
         }
-        ledSerial[i].drain();   // this prevents massive flickering!
     }
 }
