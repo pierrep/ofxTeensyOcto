@@ -42,7 +42,6 @@ void ofApp::setup() {
     teensy.serialConfigure("tty.usbmodem14751", 0, 75, 100, 25, 0);
     
     // allocate our pixels, fbo, and texture
-    teensy.pixels1.allocate(stripWidth, stripHeight*stripsPerPort*numPorts, OF_PIXELS_RGB);
     fbo.allocate(stripWidth, stripHeight*stripsPerPort*numPorts, GL_RGB);
     tex.allocate(stripWidth, stripHeight*stripsPerPort*numPorts, GL_RGB);
     
@@ -205,7 +204,7 @@ void ofApp::draw()
     
     // brightness draw
     ofSetColor(255, 255, 255);
-    ofDrawBitmapString("// PROJECT LUMI //", ofGetWidth()-250, 20);
+    ofDrawBitmapString("// ofxTeensyOcto controls //", ofGetWidth()-250, 20);
     ofDrawBitmapString("Rotate (r) == " + ofToString(fboRotate), ofGetWidth()-250, 40);
     ofDrawBitmapString("Flip (f) == " + ofToString(fboFlip), ofGetWidth()-250, 60);
     ofDrawBitmapString("Bright (u/d) == " + ofToString(brightness), ofGetWidth()-250, 80);
@@ -240,7 +239,7 @@ void ofApp::drawPanels()
         for (int x = 0; x < stripWidth; x++)
         {
             ofPushMatrix();
-            colors = guiPixels.getColor(x, y);//teensy.pixels1.getColor(x, y);
+            colors = guiPixels.getColor(x, y);
             ofSetColor(colors);
             ofTranslate(x*2, y*2 + (y/16*4)); //sections in groups
             ofRect(x, y, 2, 2);
