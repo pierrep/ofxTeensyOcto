@@ -1,6 +1,6 @@
 //
 //      Example app w/ OF Teensy/OCTO class
-//      by Jason Walters @ BBDO ...
+//      by Jason Walters
 //      Original Processing/JS code by Paul Stoffregen/PJRC.COM
 //
 //      Last revision by Jason Walters on March 21st, 2014
