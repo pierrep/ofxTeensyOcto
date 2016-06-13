@@ -9,16 +9,22 @@ public:
     // teensy functions
     void setup(int _ledWidth, int _ledHeight, int _stripsPerPort, int _numPorts);
     void update();
-    void serialWrite();
     void serialConfigure(string portName, float _xoffset, float _yoffset, float _widthPct, float _heightPct, int _direction);
     void image2data(ofImage image, unsigned char* data, bool layout);
-    void draw(int _x, int _y);
-    
+    void draw(int x, int y);
+
+    void setBrightness(int b){ brightness = (int) ofClamp(b,0,255);}
+    void drawWhite();
+    void drawRainbowH();
+    void drawRainbowV();
+    void drawWaves();
+    void drawTestPattern();
+
     // arrays
     ofSerial * ledSerial;
     ofRectangle * ledArea;
-    bool * ledLayout;
-    ofImage * ledImage;
+    bool * ledLayout;           // layout of rows, true = even is left->right
+    ofImage * ledImage;         // image sent to each port
     ofColor * colors;
     unsigned char *ledData;
     
@@ -32,10 +38,17 @@ public:
     int numPorts;
     int maxPorts;
     int dataSize;
+
+    // demos
+    float waveSpeed;
+    int brightness;
+    float counterShape;
+    int hue;
     
+
     // translate the 24 bit color from RGB to the actual
     // order used by the LED wiring.  GRB is the most common.
-    int colorWiring(int c)
+    inline int colorWiring(int c)
     {
         // GRB wiring
         return ((c & 0xFF0000) >> 8) | ((c & 0x00FF00) << 8) | (c & 0x0000FF);
@@ -44,7 +57,7 @@ public:
     // convert an integer from 0 to 100 to a float percentage
     // from 0.0 to 1.0.  Special cases for 1/3, 1/6, 1/7, etc
     // are handled automatically to fix integer rounding.
-    double percentageFloat(float percent)
+    inline double percentageFloat(float percent)
     {
         if (percent == 33) return 1.0 / 3.0;
         if (percent == 17) return 1.0 / 6.0;
@@ -57,7 +70,7 @@ public:
     }
     
     // scale a number by a percentage, from 0 to 100
-    float percentage(float num, float percent)
+    inline float percentage(float num, float percent)
     {
         double mult = percentageFloat(percent);
         double output = num * mult;
@@ -65,7 +78,7 @@ public:
     }
     
     // scale a number by the inverse of a percentage, from 0 to 100
-    int percentageInverse(int num, int percent)
+    inline int percentageInverse(int num, int percent)
     {
         double div = percentageFloat(percent);
         double output = num / div;
