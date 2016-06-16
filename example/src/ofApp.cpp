@@ -1,86 +1,64 @@
-//
-//      Example app w/ OF Teensy/OCTO class
-//      by Jason Walters
-//      Original Processing/JS code by Paul Stoffregen/PJRC.COM
-//
-//      Last revision by Jason Walters on March 21st, 2014
-//      Made with openFrameworks 0.80
-//
-//--------------------------------------------------------------
-
 #include "ofApp.h"
 
 //--------------------------------------------------------------
 void ofApp::setup() {
-    
     ofBackground(0, 0, 0);                      // default background to black / LEDs off
     ofDisableAntiAliasing();                    // we need our graphics sharp for the LEDs
+    ofSetVerticalSync(false);
+    ofSetFrameRate(90);
     
     // SYSTEM SETTINGS
     //--------------------------------------
-    stripWidth = 64;                            // pixel width of strip
-    stripHeight = 2;                            // pixel height of strip
+    stripWidth = 300;                            // pixel width of strip
+    stripHeight = 1;                            // pixel height of strip
     stripsPerPort = 8;                          // total number of strips per port
-    numPorts = 4;                               // total number of teensy ports?
-    brightness = 0;                             // LED brightness
-    fboRotate = 0;                              // rotate display
-    fboFlip = false;                            // invert display
-    waveSpeed = 0.05f;                          // animation speed
+    numPorts = 1;                               // total number of teensy ports?
+    brightness = 200;                             // LED brightness
+
     drawModes = 0;                              // default is demo mode
     demoModes = 0;                              // default is draw white
-    counterShape = 0;                           // init at zero
-    hue = 0;                                    // init color at red
+
+    dir = 1;
     
     // setup our teensys
     teensy.setup(stripWidth, stripHeight, stripsPerPort, numPorts);
     
-    // configure out teensy boards
-    // (portName, xOffset, yOffset, width%, height%, direction)
-    teensy.serialConfigure("tty.usbmodem14761", 0, 0, 100, 25, 0);
-    teensy.serialConfigure("tty.usbmodem14791", 0, 25, 100, 25, 0);
-    teensy.serialConfigure("tty.usbmodem37", 0, 50, 100, 25, 0);
-    teensy.serialConfigure("tty.usbmodem14751", 0, 75, 100, 25, 0);
+    /* Configure our teensy boards (portName, xOffset, yOffset, width%, height%, direction) */
+    teensy.serialConfigure("ttyACM0", 0, 0, 100, 100, 0);
+//    teensy.serialConfigure("ttyACM1", 0, 50, 100, 50, 0);
+
     
     // allocate our pixels, fbo, and texture
     fbo.allocate(stripWidth, stripHeight*stripsPerPort*numPorts, GL_RGB);
-    tex.allocate(stripWidth, stripHeight*stripsPerPort*numPorts, GL_RGB);
     
-    // TEST PATTERN
-    //--------------------------------------
-    font.load("fonts/samst.ttf", 10);
-    
-    // VIDEOS - dynamic loading
-    //--------------------------------------
-    dirVid.listDir("videos/");
-    dirVid.sort();
-    //allocate the vector to have as many ofVidePlayer as files
-	if( dirVid.size() ){
-		vid.assign(dirVid.size(), ofVideoPlayer());
-	}
-    videoOn = false;
-    currentVideo = 0;
-    
-    // IMAGES - dynamic loading
-    //--------------------------------------
-    dirImg.listDir("images/");
-    dirImg.sort();
-    //allocate the vector to have as many ofImages as files
-	if( dirImg.size() ){
-		img.assign(dirImg.size(), ofImage());
-	}
-    currentImage = 0;
+    setupMedia();
+}
+
+void ofApp::exit()
+{
+    /* turn all leds to black */
+    fbo.begin();
+    ofClear(0,0,0);
+    fbo.end();
+    fbo.readToPixels(teensy.pixels1);
+    teensy.update();
+
 }
 
 //--------------------------------------------------------------
 void ofApp::update()
 {
-    teensy.update();                            // update our serial to teensy stuff
-    updateFbo();                                // update our Fbo functions
-    
+    ofSetWindowTitle("TeensyOctoExample - "+ofToString(ofGetFrameRate()));
+    ballpos+=dir*1.0f;
+
     if (dirVid.size() > 0)
     {
         if (videoOn) vid[currentVideo].update();                  // update video when enabled
     }
+
+    updateFbo();                                // update our Fbo functions
+    teensy.update();                            // update our serial to teensy stuff
+
 }
 
 //--------------------------------------------------------------
@@ -89,84 +67,11 @@ void ofApp::updateFbo()
     fbo.begin();                                // begins the fbo
     ofClear(0,0,0);                             // refreshes fbo, removes artifacts
     
-    ofSetColor(brightness);                     // brightness is controllable, don't burn your eyes out!
-    tex.draw(0, 0);                             // draw our texture data into the FBO
-    
-    fbo.end();                                  // closes the fbo
-    
-    fbo.readToPixels(teensy.pixels1);           // send fbo pixels to teensy
-}
-
-// ADD ALL GRAPHICS DRAW MODES HERE -- INTO THE FBO !!!
-//--------------------------------------------------------------
-void ofApp::drawFbo()
-{
-    ofPushMatrix();
-    
-    if (!fboFlip)
-    {
-        // defaul position for our system.  x,y home (0,0) is top left corner.
-        ofTranslate(stripWidth, stripHeight*stripsPerPort*numPorts);
-        ofRotate(180);
-        ofRotateZ(270);
-        ofRotateY(180);
-    }
-    else
-    {
-        // inverted
-        ofTranslate(stripWidth, 0);
-        ofRotate(90);
-    }
-    
-    ofPushMatrix();
-    
-    switch (fboRotate)
-    {
-        case 0:
-            ofTranslate(0, 0);
-            ofRotate(0);
-            break;
-            
-        case 1:
-            if (!fboFlip) {
-                ofTranslate(64, 0);
-                ofRotate(90);
-                
-            }
-            else {
-                ofTranslate(0, 64);
-                ofRotate(-90);
-                
-            }
-            break;
-            
-        case 2:
-            ofTranslate(64, 64);
-            ofRotate(180);
-            break;
-            
-        case 3:
-            if (!fboFlip) {
-                ofTranslate(0, 64);
-                ofRotate(270);
-                
-            }
-            else {
-                ofTranslate(64, 0);
-                ofRotate(-270);
-                
-            }
-            break;
-            
-        default:
-            break;
-    }
-    
-    // graphics draw mode
+    ofPushStyle();
     switch (drawModes)
     {
-        case 0:
-            drawTestPattern();
+        case 0:            
+            drawPong();
             break;
         case 1:
             drawVideos();
@@ -176,130 +81,62 @@ void ofApp::drawFbo()
             break;
         case 3:
             drawDemos();
-            break;
-            
-            
+        break;
         default:
             break;
     }
+    ofPopStyle();
     
-    ofPopMatrix();
-    ofPopMatrix();
+    fbo.end();                                  // closes the fbo
     
-    tex.loadScreenData(699, 480, stripWidth, stripHeight*stripsPerPort*numPorts);
-    tex.readToPixels(guiPixels);
+    fbo.readToPixels(teensy.pixels1);           // send fbo pixels to teensy
+
 }
 
-// ONLY GUI DRAWS GO HERE
 //--------------------------------------------------------------
 void ofApp::draw()
 {
-    // draw our graphics on-screen so we can copy to texture.
-    ofPushMatrix();
-    ofTranslate(699, 480);
-    drawFbo();
-    ofPopMatrix();
+    return;
+    teensy.draw(20,300);
 
-    drawPanels();
-    
-    // brightness draw
-    ofSetColor(255, 255, 255);
-    ofDrawBitmapString("// ofxTeensyOcto controls //", ofGetWidth()-250, 20);
-    ofDrawBitmapString("Rotate (r) == " + ofToString(fboRotate), ofGetWidth()-250, 40);
-    ofDrawBitmapString("Flip (f) == " + ofToString(fboFlip), ofGetWidth()-250, 60);
-    ofDrawBitmapString("Bright (u/d) == " + ofToString(brightness), ofGetWidth()-250, 80);
-    ofDrawBitmapString("Speed (l/r) == " + ofToString(waveSpeed), ofGetWidth()-250, 100);
+    ofSetColor(255);
+    ofDrawBitmapString("// Controls //", ofGetWidth()-250, 20);
+    ofDrawBitmapString("Brightness (up/down) == " + ofToString(brightness), ofGetWidth()-250, 80);
     ofDrawBitmapString("Videos # == " + ofToString(dirVid.size()), ofGetWidth()-250, 120);
     ofDrawBitmapString("Images # == " + ofToString(dirImg.size()), ofGetWidth()-250, 140);
 }
 
-// PANEL VIEW GUI
-//--------------------------------------------------------------
-void ofApp::drawPanels()
+void ofApp::drawPong()
 {
-    // large display
-    ofPushMatrix();
-    ofTranslate(319, 520, 0);
-    ofScale(5, 5);
-    ofRotate(90);
-    ofRotateZ(180);
-    ofRotateX(180);
-    drawFbo();
-    ofPopMatrix();
-    
-    // pixel display
-    ofColor colors;
-    ofPushMatrix();
-    ofTranslate(1, 190, 0);
-    ofRotate(90);
-    ofRotateZ(180);
-    ofSetRectMode(OF_RECTMODE_CENTER);
-    for (int y = 0; y < stripHeight*stripsPerPort*numPorts; y++)
-    {
-        for (int x = 0; x < stripWidth; x++)
-        {
-            ofPushMatrix();
-            colors = guiPixels.getColor(x, y);
-            ofSetColor(colors);
-            ofTranslate(x*2, y*2 + (y/16*4)); //sections in groups
-            ofDrawRectangle(x, y, 2, 2);
-            ofPopMatrix();
-        }
+    if(ballpos > 290) {
+        ballpos = 290;
+        dir = -1;
     }
-    ofSetRectMode(OF_RECTMODE_CORNER);
-    ofPopMatrix();
-}
-
-//--------------------------------------------------------------
-// DEMO DRAW FUNCTIONS BELOW !!! //
-//--------------------------------------------------------------
-
-//--------------------------------------------------------------
-void ofApp::drawTestPattern()
-{
-    // vertical strips of rainbow goodness
-    for (int i = 0; i < stripWidth; i++)
-    {
-        if (i < 16) {
-            ofSetColor(255, 0, 0);
-            ofDrawRectangle(i, 0, 1, (stripHeight*stripsPerPort*numPorts));
-        }
-        else if (i > 15 && i < 32) {
-            ofSetColor(255, 255, 0);
-            ofDrawRectangle(i, 0, 1, (stripHeight*stripsPerPort*numPorts));
-        }
-        else if (i > 31 && i < 48) {
-            ofSetColor(0, 255, 0);
-            ofDrawRectangle(i, 0, 1, (stripHeight*stripsPerPort*numPorts));
-        }
-        else if (i > 47 && i < 64) {
-            ofSetColor(0, 0, 255);
-            ofDrawRectangle(i, 0, 1, (stripHeight*stripsPerPort*numPorts));
-        }
+    else if(ballpos < 0) {
+        ballpos = 0;
+        dir = 1;
     }
-    
-    //Number the panels
-    ofSetColor(255);
-    font.drawString("1", 6, 40);
-    font.drawString("2", 20, 40);
-    font.drawString("3", 36, 40);
-    font.drawString("4", 52, 40);
+    ofDrawRectangle(ballpos,0,10,stripHeight*stripsPerPort*numPorts);
+
 }
 
 void ofApp::drawDemos()
 {
     switch (demoModes) {
         case 0:
-            drawDebug();
+            teensy.drawTestPattern();
             break;
         case 1:
-            drawRainbowH();
+            teensy.drawWhite();
             break;
         case 2:
-            drawRainbowV();
+            teensy.drawRainbowH();
             break;
         case 3:
-            drawWaves();
+            teensy.drawRainbowV();
+            break;
+        case 4:
+            teensy.drawWaves();
             break;
             
         default:
@@ -307,81 +144,38 @@ void ofApp::drawDemos()
     }
 }
 
-// debugger
 //--------------------------------------------------------------
-void ofApp::drawDebug()
+void ofApp::enableVideo()
 {
-    // white debug...
-    for (int i = 0; i < (stripHeight*stripsPerPort*numPorts); i++)
-    {
-        ofColor color;
-        ofSetColor(ofColor::fromHsb(i*10, 0, 255));
-        ofDrawRectangle(0, i, stripWidth, 1);
+    if (!videoOn) videoOn = true;           // enables video
+    if (vid[currentVideo].isLoaded() == false) {
+        vid[currentVideo].load(dirVid.getPath(currentVideo));
+        vid[currentVideo].play();           // plays the video
+    }
+    else {
+        if (vid[currentVideo].isPlaying()) {
+            vid[currentVideo].stop();       // stops/pauses the video
+        }
+        else {
+            vid[currentVideo].play();       // plays the video
+        }
     }
 }
 
-// rainbow - horizontal
 //--------------------------------------------------------------
-void ofApp::drawRainbowH()
+void ofApp::disableVideo()
 {
-    // vertical strips of rainbow goodness
-    for (int i = 0; i < stripWidth; i++)
-    {
-        int huemap = ofMap(i, 0, stripWidth-1, 0, 255);
-        ofSetColor(ofColor::fromHsb(huemap, 255, 255));
-        ofDrawRectangle(i, 0, 1, (stripHeight*stripsPerPort*numPorts));
-    }
-}
-
-// rainbow - vertical
-//--------------------------------------------------------------
-void ofApp::drawRainbowV()
-{
-    // horizontal strips of rainbow goodness
-    for (int i = 0; i < (stripHeight*stripsPerPort*numPorts); i++)
-    {
-        int huemap = ofMap(i, 0, (stripHeight*stripsPerPort*numPorts)-1, 0, 255);
-        ofSetColor(ofColor::fromHsb(huemap, 255, 255));
-        ofDrawRectangle(0, i, stripWidth, 1);
-    }
-}
-
-// wave animation
-//--------------------------------------------------------------
-void ofApp::drawWaves()
-{
-    // sin wave
-    counterShape = counterShape + waveSpeed;
-    
-    // color scroller
-    hue++;
-    if (hue > 255) hue = 0;
-    
-    // back layer
-    float k = 0.0;
-    for(int i = 0; i < stripWidth; i+=5)
-    {
-        ofSetColor(ofColor::fromHsb(hue, 255, 255));
-        ofDrawRectangle(i, (stripHeight*stripsPerPort*numPorts), 5, -(stripHeight*stripsPerPort*numPorts)/4 * (sin(counterShape-k)+1.0) - (stripHeight*stripsPerPort*numPorts)/4);
-        k+=0.5;
-    }
-    
-    // front layer
-    float kk = 0.0;
-    for(int i = 0; i < stripWidth; i+=5)
-    {
-        ofSetColor(ofColor::fromHsb(hue, 255, 255*0.25));
-        ofDrawRectangle(i, (stripHeight*stripsPerPort*numPorts)+2, 5, -(stripHeight*stripsPerPort*numPorts)/4 * (sin(counterShape-kk)+1.0) - (stripHeight*stripsPerPort*numPorts)/4);
-        kk+=0.5;
-    }
+    videoOn = false;                        // disables video
+    if (vid[currentVideo].isPlaying()) vid[currentVideo].stop();  // stops/pauses the video
 }
 
 //--------------------------------------------------------------
 void ofApp::drawVideos()
 {
     //Play videos
-    ofSetColor(255);
     if (dirVid.size() > 0){
+        ofSetColor(brightness);
+        vid[currentVideo].setSpeed(5.0f);
         vid[currentVideo].draw(0, 0, stripWidth, stripHeight*stripsPerPort*numPorts);
     }
 }
@@ -390,8 +184,8 @@ void ofApp::drawVideos()
 void ofApp::drawImages()
 {
     if (dirImg.size() > 0) {
-        ofSetColor(255);
-        img[currentImage].draw(0, 0);
+        ofSetColor(brightness);
+        img[currentImage].draw(0, 0, stripWidth, stripHeight*stripsPerPort*numPorts);
     }
 }
 
@@ -404,63 +198,27 @@ void ofApp::keyPressed(int key){
         case OF_KEY_UP:
             brightness += 2;
             if (brightness > 255) brightness = 255;
+            teensy.setBrightness(brightness);
             break;
             
         case OF_KEY_DOWN:
             brightness -= 2;
             if (brightness < 0) brightness = 0;
+            teensy.setBrightness(brightness);
             break;
-            
-        case OF_KEY_RIGHT:
-            waveSpeed += 0.01f;
-            if (waveSpeed > 0.99f) waveSpeed = 0.99f;
-            break;
-            
-        case OF_KEY_LEFT:
-            waveSpeed -= 0.01f;
-            if (waveSpeed < 0.05f) waveSpeed = 0.05f;
-            break;
-            
-        case 'r':
-            fboRotate++;                            // rotates 90 degrees
-            if (fboRotate > 3) {
-                fboRotate = 0;
-            }
-            break;
-            
-        case 'f':                                   // flips the screen
-            fboFlip = !fboFlip;
-            break;
-            
-        
-        //-----------------------------------------------
+
         case 'v':
             drawModes = 1;                          // video mode
-            if (!videoOn) videoOn = true;           // enables video
-            if (vid[currentVideo].isLoaded() == false) {
-                vid[currentVideo].load(dirVid.getPath(currentVideo));
-                vid[currentVideo].play();           // plays the video
-            }
-            else {
-                if (vid[currentVideo].isPlaying()) {
-                    vid[currentVideo].stop();       // stops/pauses the video
-                }
-                else {
-                    vid[currentVideo].play();       // plays the video
-                }
-            }
+            enableVideo();
             break;
-        
-        //-----------------------------------------------
+
         case 'i':
             drawModes = 2;                          // image mode
-            videoOn = false;                        // disables video
-            if (vid[currentVideo].isPlaying()) vid[currentVideo].stop();        // stops/pauses the video
-            vid[currentVideo].setFrame(0);          // restart video at first frame
+            disableVideo();
+
             img[currentImage].load(dirImg.getPath(currentImage));
             break;
         
-        //-----------------------------------------------
         case '=':
             if (drawModes == 1) {
                 vid[currentVideo].stop();
@@ -485,25 +243,18 @@ void ofApp::keyPressed(int key){
             }
             break;
             
-        //-----------------------------------------------
         case 'd':
-            videoOn = false;                        // disables video
-            if (vid[currentVideo].isPlaying()) vid[currentVideo].stop();  // stops/pauses the video
-            vid[currentVideo].setFrame(0);                        // restart video at first frame
+            disableVideo();
             
             demoModes++;
             if (drawModes != 3) drawModes = 3;      // switch the draw mode to display demo mode.
-            if (demoModes > 3) demoModes = 0;       // tap through the demo modes on each press.
-            if (demoModes == 3) waveSpeed = 0.05f;  // if wave animation, drop speed down
+            if (demoModes > 4) demoModes = 0;       // tap through the demo modes on each press.
             break;
-            
-            //-----------------------------------------------
+
         case 't':
-            videoOn = false;                        // disables video
-            if (vid[currentVideo].isPlaying()) vid[currentVideo].stop();  // stops/pauses the video
-            vid[currentVideo].setFrame(0);                        // restart video at first frame
-            
-            if (drawModes != 0) drawModes = 0;      // switch the draw mode to display boot pattern.
+            disableVideo();
+
+            if (drawModes != 0) drawModes = 0;      // switch the draw mode
             break;
     }
 
@@ -535,6 +286,27 @@ void ofApp::keyReleased(int key)
         default:
             break;
     }
+}
+
+//--------------------------------------------------------------
+void ofApp::setupMedia()
+{
+    dirVid.listDir("videos/");
+    dirVid.sort();
+    //allocate the vector to have as many ofVidePlayer as files
+    if( dirVid.size() ){
+        vid.assign(dirVid.size(), ofVideoPlayer());
+    }
+    videoOn = false;
+    currentVideo = 0;
+
+    dirImg.listDir("images/");
+    dirImg.sort();
+    //allocate the vector to have as many ofImages as files
+    if( dirImg.size() ){
+        img.assign(dirImg.size(), ofImage());
+    }
+    currentImage = 0;
 }
 
 //--------------------------------------------------------------

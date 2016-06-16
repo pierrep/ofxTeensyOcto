@@ -9,7 +9,7 @@ class ofApp : public ofBaseApp{
 		void setup();
 		void update();
 		void draw();
-
+        void exit();
 		void keyPressed(int key);
 		void keyReleased(int key);
 		void mouseMoved(int x, int y );
@@ -19,6 +19,12 @@ class ofApp : public ofBaseApp{
 		void windowResized(int w, int h);
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
+
+        void updateFbo();
+        void setupMedia();
+        void enableVideo();
+        void disableVideo();
+        void drawPong();
     
     // LED - Teensy stuff
     //-----------------------------
@@ -28,41 +34,30 @@ class ofApp : public ofBaseApp{
     int stripsPerPort;
     int numPorts;
     int brightness;
-    float waveSpeed;
     
     // FBO stuff
     //-----------------------------
     ofFbo fbo;
-    void updateFbo();
-    void drawFbo();
     int fboRotate;
     bool fboFlip;
     ofTexture tex;
     ofPixels guiPixels;
     
-    // gui views
+    // Gui
     //-----------------------------
     void drawPanels();
+    ofTrueTypeFont font;
     
     // Graphic functions
     //-----------------------------
     void drawDemos();
-    void drawDebug();
-    void drawRainbowH();
-    void drawRainbowV();
-    void drawWaves();
     void drawVideos();
     void drawImages();
-    void drawTestPattern();
     int drawModes;
     int demoModes;
-    float counterShape;
-    int hue;
-    
-    // Test Pattern
-    //-----------------------------
-    ofTrueTypeFont font;
-    
+    float ballpos;
+    int dir;
+
     // Video player
     //-----------------------------
     ofDirectory dirVid;
