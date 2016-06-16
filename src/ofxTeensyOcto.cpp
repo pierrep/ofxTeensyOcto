@@ -19,6 +19,7 @@ void ofxTeensyOcto::setup(int _ledWidth, int _ledHeight, int _stripsPerPort, int
     numPortsMain = _numPorts;                   // number of teensy ports
     numPorts = 0;                               // teensy ports counter
     maxPorts = 8;                               // max teensy ports
+    simulate = true;                           // simulate the teensy buffers
 
     brightness = 200;
     waveSpeed = 0.05f;                          // animation speed
@@ -63,7 +64,7 @@ void ofxTeensyOcto::serialConfigure(string portName, float _xoffset, float _yoff
     if (configline.length() <= 0) {
       ofLogError("serialConfigure") << "Serial port " + portName + " is not responding.";
       ofLogError("serialConfigure") << "Is it really a Teensy 3.0+ running VideoDisplay?";
-      return;
+      if(!simulate) return;
     } else {
         ofLogNotice() << "Read " << configline.length() << " bytes: " << configline  << endl;
     }
@@ -81,7 +82,7 @@ void ofxTeensyOcto::serialConfigure(string portName, float _xoffset, float _yoff
 
     if (numparam != 12) {
       ofLogError("serialConfigure") << "Error: port " + portName + " did not respond to LED config query";
-      return;
+      if(!simulate) return;
     }
 
     // only store the info and increase numPorts if Teensy responds properly
@@ -275,6 +276,8 @@ void ofxTeensyOcto::draw(int x, int y)
 //--------------------------------------------------------------
 void ofxTeensyOcto::update()
 {
+    if(simulate) return;
+
     // send our data via serial
     for (int i=0; i < numPorts; i++)
     {

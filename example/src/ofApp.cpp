@@ -96,7 +96,6 @@ void ofApp::updateFbo()
 //--------------------------------------------------------------
 void ofApp::draw()
 {
-    return;
     teensy.draw(20,300);
 
     ofSetColor(255);
@@ -147,17 +146,19 @@ void ofApp::drawDemos()
 //--------------------------------------------------------------
 void ofApp::enableVideo()
 {
-    if (!videoOn) videoOn = true;           // enables video
-    if (vid[currentVideo].isLoaded() == false) {
-        vid[currentVideo].load(dirVid.getPath(currentVideo));
-        vid[currentVideo].play();           // plays the video
-    }
-    else {
-        if (vid[currentVideo].isPlaying()) {
-            vid[currentVideo].stop();       // stops/pauses the video
+    if (dirVid.size() > 0) {
+        if (!videoOn) videoOn = true;           // enables video
+        if (vid[currentVideo].isLoaded() == false) {
+            vid[currentVideo].load(dirVid.getPath(currentVideo));
+            vid[currentVideo].play();           // plays the video
         }
         else {
-            vid[currentVideo].play();       // plays the video
+            if (vid[currentVideo].isPlaying()) {
+                vid[currentVideo].stop();       // stops/pauses the video
+            }
+            else {
+                vid[currentVideo].play();       // plays the video
+            }
         }
     }
 }
@@ -165,8 +166,10 @@ void ofApp::enableVideo()
 //--------------------------------------------------------------
 void ofApp::disableVideo()
 {
-    videoOn = false;                        // disables video
-    if (vid[currentVideo].isPlaying()) vid[currentVideo].stop();  // stops/pauses the video
+    if (dirVid.size() > 0) {
+        videoOn = false;                        // disables video
+        if (vid[currentVideo].isPlaying()) vid[currentVideo].stop();  // stops/pauses the video
+    }
 }
 
 //--------------------------------------------------------------

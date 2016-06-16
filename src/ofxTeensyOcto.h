@@ -38,6 +38,7 @@ public:
     int numPorts;
     int maxPorts;
     int dataSize;
+    bool simulate;
 
     // demos
     float waveSpeed;
