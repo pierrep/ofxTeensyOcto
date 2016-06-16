@@ -48,7 +48,7 @@ void ofApp::exit()
 //--------------------------------------------------------------
 void ofApp::update()
 {
-    ofSetWindowTitle("TeensyOctoExample - "+ofToString(ofGetFrameRate()));
+    //ofSetWindowTitle("TeensyOctoExample - "+ofToString(ofGetFrameRate()));
     ballpos+=dir*1.0f;
 
     if (dirVid.size() > 0)
