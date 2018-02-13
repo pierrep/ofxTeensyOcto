@@ -302,3 +302,13 @@ void ofxTeensyOcto::update()
     }
 }
 
+//--------------------------------------------------------------
+void ofxTeensyOcto::close()
+{
+        for (int i=0; i < numPorts; i++)
+        {
+            ledSerial[i].drain();
+            ledSerial[i].close();
+        }
+}
+

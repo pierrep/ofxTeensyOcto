@@ -12,7 +12,7 @@ public:
     void serialConfigure(string portName, float _xoffset, float _yoffset, float _widthPct, float _heightPct, int _direction);
     void image2data(ofImage image, unsigned char* data, bool layout);
     void draw(int x, int y);
-
+    void close();
     void setBrightness(int b){ brightness = (int) ofClamp(b,0,255);}
     void drawWhite();
     void drawRainbowH();
